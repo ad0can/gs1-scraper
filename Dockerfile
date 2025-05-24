@@ -1,21 +1,19 @@
 FROM python:3.10-slim
 
-# Gerekli paketler
 RUN apt-get update && apt-get install -y \
-    wget unzip xvfb libxi6 libgconf-2-4 libnss3 libxss1 libasound2 libatk-bridge2.0-0 libgtk-3-0 curl gnupg \
-    && rm -rf /var/lib/apt/lists/*
+    wget unzip curl gnupg2 libnss3 libgconf-2-4 libxss1 libasound2 libatk-bridge2.0-0 libgtk-3-0 libxi6 xvfb
 
-# Google Chrome kurulumu (sabit sürüm 136)
-RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-linux-signing-key.gpg \
-    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-linux-signing-key.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
-    && apt-get update && apt-get install -y google-chrome-stable=136.0.7103.113-1
+# Sabit Chrome 114 kurulumu
+RUN wget -q https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_114.0.5735.198-1_amd64.deb && \
+    apt-get install -y ./google-chrome-stable_114.0.5735.198-1_amd64.deb && \
+    rm google-chrome-stable_114.0.5735.198-1_amd64.deb
 
-# ChromeDriver kurulumu (136 sürümü)
-RUN wget -N https://chromedriver.storage.googleapis.com/136.0.7110.0/chromedriver_linux64.zip \
-    && unzip chromedriver_linux64.zip \
-    && mv chromedriver /usr/local/bin/chromedriver \
-    && chmod +x /usr/local/bin/chromedriver \
-    && rm chromedriver_linux64.zip
+# Sabit ChromeDriver 114 kurulumu
+RUN wget -q https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip && \
+    unzip chromedriver_linux64.zip && \
+    mv chromedriver /usr/local/bin/chromedriver && \
+    chmod +x /usr/local/bin/chromedriver && \
+    rm chromedriver_linux64.zip
 
 WORKDIR /app
 
