@@ -1,38 +1,25 @@
-from fastapi import FastAPI, HTTPException
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-import time
+FROM python:3.10-slim
 
-app = FastAPI()
+RUN apt-get update && apt-get install -y \
+    wget unzip xvfb libxi6 libgconf-2-4 libnss3 libxss1 libasound2 libatk-bridge2.0-0 libgtk-3-0 curl gnupg \
+    && rm -rf /var/lib/apt/lists/*
 
-@app.get("/scrape")
-def scrape(gtin: str):
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
+RUN curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-linux-signing-key.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-linux-signing-key.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
+    && apt-get update && apt-get install -y google-chrome-stable
 
-    driver = webdriver.Chrome(options=options)
-    try:
-        driver.get("https://www.gs1.org/services/verified-by-gs1")
-        time.sleep(5)
+RUN CHROMEDRIVER_VERSION=136.0.7110.6 && \
+    wget -N https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip && \
+    unzip chromedriver_linux64.zip && \
+    mv chromedriver /usr/local/bin/chromedriver && \
+    chmod +x /usr/local/bin/chromedriver && \
+    rm chromedriver_linux64.zip
 
-        input_box = driver.find_element("id", "edit-gtin")
-        input_box.send_keys(gtin)
+WORKDIR /app
 
-        submit_btn = driver.find_element("id", "edit-submit")
-        submit_btn.click()
+COPY requirements.txt requirements.txt
+RUN pip install -r requirements.txt
 
-        time.sleep(5)
+COPY . .
 
-        # Buradaki selector'ı gerçek selector ile değiştirin:
-        company_elem = driver.find_element("css selector", ".views-field-title a")
-        company_name = company_elem.text
-
-        return {"company": company_name}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        driver.quit()
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
