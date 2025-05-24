@@ -1,14 +1,26 @@
 from fastapi import FastAPI, HTTPException
-import requests
+from playwright.async_api import async_playwright
+import asyncio
 
 app = FastAPI()
 
 @app.get("/scrape")
-def scrape(gtin: str):
-    url = "https://www.gs1.org/services/verified-by-gs1"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        return {"html_snippet": response.text[:500]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+async def scrape(gtin: str):
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        page = await browser.new_page()
+        
+        try:
+            await page.goto("https://www.gs1.org/services/verified-by-gs1", timeout=15000)
+            await page.fill("#edit-gtin", gtin)
+            await page.click("#edit-submit")
+            await page.wait_for_selector(".views-field-title a", timeout=15000)
+            
+            company_elem = await page.query_selector(".views-field-title a")
+            company_name = await company_elem.inner_text()
+            
+            await browser.close()
+            return {"company": company_name}
+        except Exception as e:
+            await browser.close()
+            raise HTTPException(status_code=500, detail=str(e))
